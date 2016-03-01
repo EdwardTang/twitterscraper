@@ -24,7 +24,7 @@ runner = CrawlerRunner(get_project_settings())
 # q = 'valerian,lang:en,since:2006-03-21,until:2010-12-22'
 # q = 'valerian,lang:en,since:2006-03-21,until:2007-04-12'
 # q = '"st johns wort",lang:en,since:2006-03-21,until:2015-12-25'
-q = 'melatonin,lang:en,since:2006-03-21,until:2016-01-10'
+q = 'from:kelsey3lisabeth,lang:en,since:2006-03-21,until:2016-02-27'
 d = runner.crawl('test', domain='twitter.com', query=q)
 
 d.addBoth(lambda _: reactor.stop())
