@@ -19,15 +19,26 @@ NEWSPIDER_MODULE = 'twitterscraper.spiders'
 USER_AGENT = ''
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
+<<<<<<< HEAD
 CONCURRENT_REQUESTS=16
+=======
+CONCURRENT_REQUESTS=32
+>>>>>>> mongodb-branch
 
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
+<<<<<<< HEAD
 DOWNLOAD_DELAY=6
 # The download delay setting will honor only one of:
 # CONCURRENT_REQUESTS_PER_DOMAIN=16
 CONCURRENT_REQUESTS_PER_IP=16
+=======
+DOWNLOAD_DELAY=0.25
+# The download delay setting will honor only one of:
+# CONCURRENT_REQUESTS_PER_DOMAIN=16
+CONCURRENT_REQUESTS_PER_IP=32
+>>>>>>> mongodb-branch
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED=False
@@ -55,15 +66,32 @@ CONCURRENT_REQUESTS_PER_IP=16
 
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
+<<<<<<< HEAD
 #EXTENSIONS = {
 #    'scrapy.telnet.TelnetConsole': None,
 #}
+=======
+# EXTENSIONS = {
+#    # 'scrapy.telnet.TelnetConsole': None,
+#    'twitterscraper.contrib.extension.spider_open_close_logging.SpiderOpenCloseLogging':500
+# }
+>>>>>>> mongodb-branch
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
+<<<<<<< HEAD
    'twitterscraper.pipelines.MongoDBPipeline': 300,
    'twitterscraper.pipelines.DuplicatesPipeline': 250,
+=======
+   # 'twitterscraper.pipelines.CustomMongoDBPipeline': 300,
+   'scrapy_mongodb.MongoDBPipeline':300,
+   # 'twitterscraper.pipelines.MongoDBPipeline_test': 300,
+   'twitterscraper.pipelines.DuplicatesPipeline': 250,
+   # 
+   'twitterscraper.pipelines.FilterNoContentPipeline': 150,
+   'twitterscraper.pipelines.FilterUserMentionPipeline': 200,
+>>>>>>> mongodb-branch
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -71,12 +99,21 @@ ITEM_PIPELINES = {
 # NOTE: AutoThrottle will honour the standard settings for concurrency and delay
 AUTOTHROTTLE_ENABLED=True
 # The initial download delay
+<<<<<<< HEAD
 AUTOTHROTTLE_START_DELAY=3
 # The maximum download delay to be set in case of high latencies
 AUTOTHROTTLE_MAX_DELAY=60
 # Enable showing throttling stats for every response received:
 AUTOTHROTTLE_DEBUG=False
 AUTOTHROTTLE_CONCURRENCY_CHECK_PERIOD = 10#How many responses should pass to perform concurrency adjustments.
+=======
+AUTOTHROTTLE_START_DELAY=20.0
+# The maximum download delay to be set in case of high latencies
+AUTOTHROTTLE_MAX_DELAY=60.0
+# Enable showing throttling stats for every response received:
+AUTOTHROTTLE_DEBUG=True
+# AUTOTHROTTLE_CONCURRENCY_CHECK_PERIOD = 10#How many responses should pass to perform concurrency adjustments.
+>>>>>>> mongodb-branch
 
 # Enable and configure HTTP caching (disabled by default)
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
@@ -95,7 +132,11 @@ AUTOTHROTTLE_CONCURRENCY_CHECK_PERIOD = 10#How many responses should pass to per
 
 
 # Retry many times since proxies often fail
+<<<<<<< HEAD
 RETRY_TIMES = 20
+=======
+RETRY_TIMES = 10
+>>>>>>> mongodb-branch
 # Retry on most error codes since proxies fail for different reasons
 RETRY_HTTP_CODES = [500, 503, 504, 400, 403, 404, 408]
 
@@ -105,9 +146,17 @@ DOWNLOADER_MIDDLEWARES = {
     'twitterscraper.contrib.downloadmiddleware.rotate_useragent.RotateUserAgentMiddleware':400,
     'scrapy.downloadermiddlewares.retry.RetryMiddleware': 90,
     # Fix path to this module
+<<<<<<< HEAD
     # 'twitterscraper.contrib.downloadmiddleware.randomproxy.RandomProxy': 100,
     # 'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 110,
 }
+=======
+    'twitterscraper.contrib.downloadmiddleware.randomproxy.RandomProxy': 100,
+    'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 110,
+}
+DOWNLOAD_TIMEOUT = 20
+
+>>>>>>> mongodb-branch
 
 # DOWNLOADER_MIDDLEWARES = {
     # 'twitterscraper.contrib.downloadmiddleware.google_cache.GoogleCacheMiddleware':50,
@@ -119,7 +168,11 @@ DOWNLOADER_MIDDLEWARES = {
 #     'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 110,
 # }
 
+<<<<<<< HEAD
 GOOGLE_CACHE_DOMAINS = ['twitter.com',]
+=======
+# GOOGLE_CACHE_DOMAINS = ['twitter.com',]
+>>>>>>> mongodb-branch
 
 # Proxy list containing entries like
 # http://host1:port
@@ -127,8 +180,18 @@ GOOGLE_CACHE_DOMAINS = ['twitter.com',]
 # http://host3:port
 # ...
 PROXY_LIST = '_reliable_list.txt'
+<<<<<<< HEAD
 USER_AGENT_LIST = "_user_agent_list.txt"
 LOG_FILE = "logs/scrapy.log"
+=======
+PROXY_CHANGING_ODDS = 33
+
+USER_AGENT_LIST = "_user_agent_list.txt"
+USER_AGENT_CHANGING_ODDS = 60
+
+LOG_FILE = "logs/scrapy.log"
+LOG_ENABLED = False
+>>>>>>> mongodb-branch
 
 # scrapy-webdriver settings
 # DOWNLOAD_HANDLERS = {
@@ -144,7 +207,23 @@ LOG_FILE = "logs/scrapy.log"
                                  # or 'your_package.CustomWebdriverClass'
                                  # or an actual class instead of a string.
 
+<<<<<<< HEAD
 MONGODB_SERVER = "localhost"
 MONGODB_PORT = 27017
 MONGODB_DB = "tweets"
 MONGODB_COLLECTION = "tweet_detail"
+=======
+# MONGODB_SERVER = "localhost"
+# MONGODB_PORT = 27017
+# MONGODB_DB = "tweets"
+# MONGODB_COLLECTION = "tweet_detail"
+
+# Basic configuration of scrapy-mongodb
+# See http://sebdah.github.io/scrapy-mongodb/
+MONGODB_URI = 'mongodb://localhost:27017'
+MONGODB_DATABASE = 'tweets'
+# MONGODB_COLLECTION = 'echinacea'
+MONGODB_COLLECTION = 'tweet_detail_test'
+MONGODB_ADD_TIMESTAMP = True
+MONGODB_BUFFER_DATA = 10
+>>>>>>> mongodb-branch

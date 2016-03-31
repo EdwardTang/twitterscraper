@@ -39,7 +39,11 @@ DATABASE_HOST = "localhost"
 DATABASE_PORT = 27017
 INDEX = {
             # collection
+<<<<<<< HEAD
             'tweet_detail':
+=======
+            'st_johns_wort':
+>>>>>>> mongodb-branch
             {
                 (('user_screen_name', ASCENDING), ('tweet_id', DESCENDING)):
                     {
@@ -47,6 +51,7 @@ INDEX = {
                     },
                 'user_screen_name': {'name': 'user_screen_name'},
                 'tweet_id': {'name': 'tweet_id'},
+<<<<<<< HEAD
                 'created_at': {'name': 'created_at'},
                 }
         }
@@ -54,6 +59,15 @@ INDEX = {
 def drop_database(name_or_database):
     if name_or_database and client:
         client.drop_database(name_or_database)
+=======
+                'created_at_ts': {'name': 'created_at_ts'},
+                }
+        }
+
+# def drop_database(name_or_database):
+#     if name_or_database and client:
+#         client.drop_database(name_or_database)
+>>>>>>> mongodb-branch
 
 def create_index():
     """
@@ -65,5 +79,9 @@ def create_index():
 
 if __name__ == "__main__":
     client = MongoClient(DATABASE_HOST,DATABASE_PORT) 
+<<<<<<< HEAD
     drop_database(DATABASE_NAME)
+=======
+    # drop_database(DATABASE_NAME)
+>>>>>>> mongodb-branch
     create_index() 
