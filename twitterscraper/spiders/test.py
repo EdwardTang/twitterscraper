@@ -24,156 +24,139 @@ import logging
 # from scrapy.selector import HtmlXPathSelector
 from scrapy.http import Request
 from twitterscraper import items
+from twitterscraper.utils.project import parse_query
 # from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from IPython.core.debugger import Tracer
 
 
 class SearchSpider(scrapy.Spider):
-    name = "echinacea"
+    name = "test"
     allowed_domains = ["twitter.com"]
-    custom_settings = {'MONGODB_COLLECTION': 'echinacea'
-                      # 'LOG_FILE':'logs/echinacea/scrapy.log'
-                       }
+    custom_settings = {'MONGODB_COLLECTION': 'melatonin'}
+                        # 'LOG_FILE':'logs/echinacea/scrapy.log'
     start_urls = []
-    min_tweet = None
-    max_tweet = None
-    is_first_query = False
-    data_max_position = ""
     settings = get_project_settings()
 
     def __init__(self, domain=None, query="from:TangTotoro"):
         # super(SearchSpider, self).__init__(*args, **kwargs)
         # query = kwargs.get('query')
         session_id = datetime.datetime.utcnow().date()
-
         """
         Scrape items from twitter
         :param query:   Query to search Twitter with. Takes form of queries
         constructed with using Twitters
                         advanced search: https://twitter.com/search-advanced
         """
-        self.query = query
+        self.query_str = query
+        self.query = parse_query(query)
+        # self.is_time_window_new = True
         self.query_keyword = query.split(',')[0]
-        # Tracer()()
+        self.min_tweet = {}
+        self.max_tweet = {}
+        self.very_last_tweet_id = "213426697909977088"  # melatonin' last tweet
+        # self.very_last_tweet_id = "25283831" #valerian's last tweet
+        # self.very_last_tweet_id = '291475022'  # st johns wort 2014-04-14
+        self.until_boundary = self.query['until']
 
         self.session_id = session_id.strftime('%Y-%m-%d')
         # Tracer()()
         url = self.construct_url(self.query)
         # Tracer()()
         self.start_urls.append(url)
+        # Tracer()()
+        self.random_str = "BD1UO2FFu9QAAAAAAAAETAAAAAcAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+        AAAAAAAAAAAAAA"
 
     def parse(self, response):
         # Random string is used to construct the XHR sent to twitter.com
-        random_str = "BD1UO2FFu9QAAAAAAAAETAAAAAcAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         data = json.loads(response.body_as_unicode())
-        # default rate delay is 12s
-        # rate_delay = self.settings['DOWNLOAD_DELAY']
-        # rate_delay = 6
 
-        # delay_choices = [(1,30), (2,25), (3,20),(4,15),(5,10)]
-        # delay_choices = [(1,50), (2,30), (3,10),(4,8),(5,2)]
-        # delay_choices = [(0,1),(1,89), (2,4), (3,3),(4,2),(5,1)]
-        # delay_choices = [(1,60), (2,20), (3,10),(4,8),(5,2)]
-        # delay_choices = [(0,33),(1,56), (2,5), (3,3),(4,2),(5,1)]
-        # if data["max_position"] is not None:
+        if data['new_latent_count'] > 0:
+            # If the number of tweets in response is greater than 0,
+            # then extract tweets from item_html
+            tweets = self.extract_tweets(data['items_html'])
+            for tweet in tweets:
+                # push parsed item to mongoDB pipline
+                yield self.parse_tweet(tweet, response)
 
-        try:
-            if data['items_html'] is not None:
-                tweets = self.extract_tweets(data['items_html'])
-
-
-                # If we have no tweets, then we can break the loop early
-                if len(tweets) == 0 and data['has_more_items'] is False:
+            if len(tweets) >= 2:
+                next_url = self.build_nexturl(tweets, data)
+                # Tracer()()
+                yield Request(url=next_url, callback=self.parse, dont_filter=True)
+            else:
+                # TODO: # jump to the yesterday of until_boundary
+                # Tracer()()
+                new_time_window_url = self.build_time_window_url(tweets, data)
+                yield Request(url=new_time_window_url, callback=self.parse, dont_filter=True)
+            # If we have no tweets, then we can break the loop early
+        else:
+            if response.url is not self.start_urls[0]:
+                # Tracer()()
+                if self.is_end():
                     # Tracer()()
-                    pprint(data)
+                    # pprint(data)
                     logging.log(logging.DEBUG, data)
-                    logging.log(logging.INFO, "Reach the end of search results( " + self.query + " )")
+                    logging.log(logging.INFO, "Reach the end of search results( " + self.query_str + " )")
+                    print("Reach the end of search results( " + self.query_str + " )")
                     return
-                    # yield Request(url=next_url, callback=self.parse)
-
-                for tweet in tweets:
-                    # push parsed item to mongoDB pipline
-                    yield self.parse_tweet(tweet, response)
-
-                # If we haven't set our min tweet yet, set it now
-                if self.min_tweet is None:
-                    self.is_first_query = True
-                    self.min_tweet = tweets[0]
-                elif self.min_tweet is not tweets[0]:
-                    self.min_tweet = tweets[0]
-
-                # continue_search = self.save_tweets(tweets)
-
-                # The max tweet is the last tweet in the list
-                self.max_tweet = tweets[-1]
-                if self.min_tweet['tweet_id'] is not self.max_tweet['tweet_id']:
-                    self.max_position = "TWEET-%s-%s-%s" % (
-                        self.max_tweet['tweet_id'],
-                        self.min_tweet['tweet_id'],
-                        random_str)
-                    # '''
-                    #     is_first_query is a indicator used to identify the intial query. With the intial query
-                    #     the crwaler can simulate the hand-shake request while the delay time is greater than a
-                    #     predefined time period, for instance, 22 seconds
-                    # '''
-                    # if self.is_first_query:
-                    #     self.data_max_position = self.max_position
-                    #     self.is_first_query = False
-                    # Construct next url to crawl
-                    next_url = self.construct_url(
-                        self.query,
-                        max_position=self.max_position,
-                        operater="max_position")
-
-                    # Sleep for rate_delay
+                else:
                     # Tracer()()
-                    # delay_multiple = self.weighted_choice(delay_choices)
-                    # if delay_multiple is not 0:
-                    #     delay_time = random.uniform(rate_delay*(delay_multiple-1), rate_delay*delay_multiple)
-                    #     # logging.log(logging.DEBUG,"Sleep for "+ str(delay_time) +" seconds")
-                    #     print "Sleep for "+ str(delay_time) +" seconds"
-                    #     time.sleep(delay_time)
-                    #     # if delay_time > 22:
-                    #     #     next_url = self.construct_url(
-                    #     #         self.query,
-                    #     #         max_position=self.data_max_position,
-                    #     #         operater="min_position")
-                    #     #     yield Request(url=next_url, callback=self.parse,dont_filter=True)
-                    # else:
-                    #     # logging.log(logging.DEBUG,"Sleep for 0 seconds")
-                    #     print "Sleep for "+ str(delay_time) +" seconds"
-
+                    if self.until_boundary is self.query['until']:
+                        days_delta = 1
+                    else:
+                        days_delta = 0
+                    self.query['until'] = self.adjust_time_window(self.until_boundary, days_delta, 'backward')
+                    new_time_window_url = self.construct_url(self.query)
+                    logging.log(logging.INFO, 'Construct new time window: [%s,%s)' %
+                        (
+                            self.query['since'],
+                            self.query['until']
+                        )
+                    )
                     print
-                    print "Next Request:" + "TWEET-%s-%s" % (
-                        self.max_tweet['tweet_id'], self.min_tweet['tweet_id'])
+                    print "Parsed " + str(data['new_latent_count']) + " Tweets,"
+                    print "Next Request:" + "since:%s, until:%s" % (
+                        self.query['since'],
+                        self.query['until']
+                    )
                     print
-                    # Tracer()()
-                    yield Request(url=next_url, callback=self.parse,dont_filter=True)
-        except Exception, e:
-            pass
 
-    def weighted_choice(self, choices):
-        """
-        Random select weighted choices
-        :param choices: The pair of values and weights
-        :return: A weighted value
-        """
-        # Tracer()()
-        values, weights = zip(*choices)
-        total = 0
-        cum_weights = []
-        for w in weights:
-            total += w
-            cum_weights.append(total)
-        x = random.random() * total
-        i = bisect(cum_weights, x)
-        # Tracer()()
-        return values[i]
+                    yield Request(url=new_time_window_url, callback=self.parse, dont_filter=True)
+                # jump to the yesterday of until_boundary
+            else:
+                Tracer()()
+                self.query['until'] = self.adjust_time_window(self.query['until'], 1, 'backward')
+                new_time_window_url = self.construct_url(self.query)
+                logging.log(logging.INFO, 'Construct new time window: [%s, %s)' % (
+                            self.query['since'],
+                            self.query['until']))
+                print
+                print "Parsed " + str(data['new_latent_count']) + " Tweets,"
+                print "Next Request:" + "since:%s, until:%s" % (
+                    self.query['since'],
+                    self.query['until']
+                    )
+                print
+                yield Request(url=new_time_window_url, callback=self.parse, dont_filter=True)
 
+    def build_time_window_url(self, tweets, data):
+        self.max_tweet = tweets[-1]
+        self.until_boundary = self.max_tweet['created_at_iso'].split(' ')[0]
+        self.query['until'] = self.adjust_time_window(self.until_boundary, 0, 'backward')
+        new_time_window_url = self.construct_url(self.query)
+        # self.is_time_window_new = True
+        print
+        print "Parsed " + str(data['new_latent_count']) + " Tweets,"
+        print "Next Request:" + "since:%s, until:%s" % (
+            self.query['since'],
+            self.query['until']
+        )
+        print
+        return new_time_window_url
 
-
-    def parse_tweet(self, tweet,response):
+    def parse_tweet(self, tweet, response):
         tweet_item = items.TwitterscraperItem()
         tweet_item['session_id'] = self.session_id
         tweet_item['tweet_id'] = tweet['tweet_id']
@@ -183,13 +166,10 @@ class SearchSpider(scrapy.Spider):
         tweet_item['user_name'] = tweet['user_name']
         tweet_item['created_at_ts'] = tweet['created_at_ts']
         tweet_item['created_at_iso'] = tweet['created_at_iso']
-        # tweet_item['convo_url'] = tweet['convo_url']
-        # tweet_item['image_url'] = tweet['image_url']
         tweet_item['num_retweets'] = tweet['num_retweets']
         tweet_item['num_favorites'] = tweet['num_favorites']
         tweet_item['keyword'] = tweet['keyword']
-        tweet_item['query'] = self.query
-        # referring_url = response.request.headers.get('Referer', None)
+        tweet_item['query'] = self.query_str
         tweet_item['referring_url'] = response.request.headers.get('Referer', None) or self.start_urls[0]
         tweet_item['request_url'] = response.url
         tweet_item['quote_tweet_id'] = tweet['quote_tweet_userid']
@@ -199,11 +179,37 @@ class SearchSpider(scrapy.Spider):
         tweet_item['quote_tweet_text'] = tweet['quote_tweet_text']
         try:
             tweet_item['html'] = tweet['html']
-        except Exception,e:
-            Tracer()()
-            pass
+        except Exception, e:
+            traceback.print_exc()
         # Tracer()()
         return tweet_item
+
+    def build_nexturl(self, tweets, data):
+        self.until_boundary = tweets[-1]['created_at_iso'].split(' ')[0]
+        # The max tweet is the last tweet in the list
+        self.min_tweet = tweets[0]
+        self.max_tweet = tweets[-1]
+
+        self.max_position = "TWEET-%s-%s-%s" % (
+            self.max_tweet['tweet_id'],
+            self.min_tweet['tweet_id'],
+            self.random_str
+        )
+
+        next_url = self.construct_url(
+            self.query,
+            max_position=self.max_position,
+            operater="max_position"
+        )
+        print
+        print "Parsed " + str(data['new_latent_count']) + " Tweets,"
+        print "Next Request:" + "TWEET-%s-%s" % (
+            self.max_tweet['tweet_id'],
+            self.min_tweet['tweet_id']
+        )
+        print
+        # Tracer()()
+        return next_url
 
     def extract_tweets(self, items_html):
         """
@@ -260,32 +266,9 @@ class SearchSpider(scrapy.Spider):
                     text_p = li.find("p", class_="tweet-text")
                     if text_p is not None:
                         tweet['text'] = text_p.get_text()
-
-                        # If there is any user mention containing the query, then pass the tweet.
-                        # Tracer()()
-                        # if self.query.find("from:") == -1:
-                        user_mentions = twitter_username_re.match(tweet['text'])
-                        if user_mentions and any([self.query_keyword.lower() in user_mention.lower() for user_mention in user_mentions.groups()]):
-                            # Tracer()()
-                            logging.log(logging.DEBUG, 'Found '+self.query_keyword+' in '+ str(user_mentions.groups())+': Drop tweet '+tweet['tweet_id'])
-                            continue
-                        # If the keyword was found in the text and was the same with query, then accept the tweet
-                        # elif text_p.find("strong") and text_p.find("strong").get_text().lower() == self.query_keyword.lower():
-                        #     tweet['keyword'] = text_p.find("strong").get_text()
-                        # elif tweet['text'].lower().find(self.query_keyword.lower()) != -1:
-                        #     tweet['keyword'] = self.query_keyword
-                        # else:
-                        #     # The keyword is not in the text, then pass the tweet.
-                        #     # Tracer()()
-                        #     logging.log(logging.DEBUG, 'No '+self.query_keyword +' in the content of tweet'+': Drop tweet '+tweet['tweet_id'])
-                        #     continue
-                    else:
-                        # Tracer()()
-                        logging.log(logging.DEBUG, 'No content in the tweet' + ': Drop tweet ' + tweet['tweet_id'])
-                        continue
                 except Exception, e:
                     Tracer()()
-                    logging.log(logging.DEBUG, "ERROR(extract_text_p): %s" % (str(e),))
+                    logging.log(logging.DEBUG, "ERROR(extract_text_p): %s"%(str(e),))
                     traceback.print_exc()
                 '''
                 Extract quote tweet content if exists
@@ -301,7 +284,7 @@ class SearchSpider(scrapy.Spider):
                         tweet['quote_tweet_text'] = quote_tweet.find("div",class_="QuoteTweet-text").get_text()
                 except Exception, e:
                     Tracer()()
-                    logging.log(logging.DEBUG, "ERROR(extract_quote_tweet): %s" % (str(e),))
+                    logging.log(logging.DEBUG, "ERROR(extract_quote_tweet): %s"% (str(e),))
                     traceback.print_exc()
 
                 # Tweet isRetweet
@@ -370,55 +353,89 @@ class SearchSpider(scrapy.Spider):
         pagination of tweets
         :return: A string URL
         """
-        sequent_q = ' '.join(query.split(','))
-        # Tracer()()
-        params = {
-            'vertical': 'default',
-            # Query Param
-            # 'q': query+ ' '+'lang:en'+' '+'since:2007-01-19 until:2014-03-13', #st.john's wort since:2007-01-20 until:2014-03-12
-            'q': sequent_q,
-            # Type Param
-            'src': 'typd',
-            'f': 'tweets'
-        }
+        try:
+            sequent_q = ''
+            for key, value in query.iteritems():
+                if key is 'keyword':
+                    op = value + ' '
+                else:
+                    op = key + ':' + value + ' '
+                sequent_q += op
 
-        #todo develop a query operator recognize function
-        # def doit(text):
-        #     import re
-        #     matches=re.findall(r'\"(.+?)\"',text)
-        #     # matches is now ['String 1', 'String 2', 'String3']
-        #     return ",".join(matches)
+            # Tracer()()
+            params = {
+                'vertical': 'default',
+                # Query Param
+                # 'q': query+ ' '+'lang:en'+' '+'since:2007-01-19 until:2014-03-13', #st.john's wort since:2007-01-20 until:2014-03-12
+                'q': sequent_q,
+                # Type Param
+                'src': 'typd',
+                'f': 'tweets'
+            }
 
-        # q = doit(query)
+            # If our max_position param is not None, we add it to the parameters
+            if operater == "max_position":
+                if max_position is not None:
+                    params['include_available_features'] = '1'
+                    params['include_entities'] = '1'
+                    params['max_position'] = max_position
+                    params['reset_error_state'] = 'false'
+                    params['last_note_ts'] = int(time.time())
 
-        # params = {
-        #     'vertical': 'default',
-        #     # Type Param
-        #     'src': 'typd'
-        # }
+            elif operater == "min_position":
+                if max_position is not None:
+                    params['composed_count'] = '0'
+                    params['include_available_features'] = '1'
+                    params['include_entities'] = '1'
+                    params['include_new_items_bar'] = 'true'
+                    params['interval'] = '30000'
+                    params['latent_count'] = '0'
+                    params['min_position'] = max_position
+                    params['last_note_ts'] = int(time.time())
+            # url_tupple = ('https', 'twitter.com', '/i/search/timeline',
+            #               '', urlencode(OrderedDict(params)), '')
+            url_tupple = ['https', 'twitter.com', '/i/search/timeline',
+                          '', urlencode(OrderedDict(params)), '']
+            # Tracer()()
+            # url_tupple = ('https', 'twitter.com', 'i/profiles/show/'+user_screen_name+'/timeline/with_replies', '', urlencode(params), '')
+            return urlunparse(url_tupple)
+        except Exception:
+            traceback.print_exc()
+            pass
 
-        # If our max_position param is not None, we add it to the parameters
-        if operater == "max_position":
-            if max_position is not None:
-                params['include_available_features'] = '1'
-                params['include_entities'] = '1'
-                params['max_position'] = max_position
-                params['reset_error_state'] = 'false'
+    # def construct_new_time_window_url(self,window_boundary,time_window_operator='until',days=1,'')
 
-        elif operater == "min_position":
-            if max_position is not None:
-                params['composed_count'] = '0'
-                params['include_available_features'] = '1'
-                params['include_entities'] = '1'
-                params['include_new_items_bar'] = 'true'
-                params['interval'] = '30000'
-                params['latent_count'] = '0'
-                params['min_position'] = max_position
-        # url_tupple = ('https', 'twitter.com', '/i/search/timeline',
-        #               '', urlencode(OrderedDict(params)), '')
-        url_tupple = ['https', 'twitter.com', '/i/search/timeline',
-                      '', urlencode(OrderedDict(params)), '']
-        # Tracer()()
-        # url_tupple = ('https', 'twitter.com', 'i/profiles/show/'+user_screen_name+'/timeline/with_replies', '', urlencode(params), '')
-        return urlunparse(url_tupple)
-        # print urlunparse(url_tupple)
+    def adjust_time_window(self, boundary, days=1, direction='backward'):
+        boundary_obj = datetime.datetime.strptime(boundary,'%Y-%m-%d')
+        time_delta = datetime.timedelta(days=days)
+        if direction is 'backward':
+            boundary_obj = boundary_obj - time_delta
+        elif direction is 'forward':
+            boundary_obj = boundary_obj + time_delta
+        else:
+            logging.log(logging.INFO, 'Cursor is not supposed to move to %s direction '%(direction))
+            traceback.print_exc()
+        return boundary_obj.strftime('%Y-%m-%d')
+
+    def is_end(self):
+        '''
+        Check if self.max_tweet is the very last tweet
+        if yes, return True
+        else, return False
+
+        '''
+        if self.max_tweet['tweet_id'] == self.very_last_tweet_id:
+            return True
+        else:
+            return False
+        # if response.url.find('max_position') > -1:
+        # # if self.is_time_window_new:
+        #     if self.max_tweet['tweet_id'] is self.very_last_tweet_id:
+        #         return True
+        #     else:
+        #         return False
+        # else:
+        #     if self.max_tweet['tweet_id'] is self.very_last_tweet_id:
+        #         return True
+        #     else:
+        #         return False

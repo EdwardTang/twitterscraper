@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 import datetime
+import traceback
 from pprint import pprint
 import urlparse
 from urlparse import urlunparse
@@ -32,13 +33,12 @@ class SearchSpider(scrapy.Spider):
     name = "valerian"
     allowed_domains = ["twitter.com"]
     custom_settings= {'MONGODB_COLLECTION': 'valerian'
-                      # 'LOG_FILE':'logs/valerian/scrapy.log'
+                      # 'LOG_FILE':'logs/echinacea/scrapy.log'
     }
     start_urls = []
-    min_tweet = None
-    max_tweet = None
+    min_tweet = {}
+    max_tweet = {}
     is_first_query = False
-    # @todo: develop an algorithm to find the very last tweet
     very_last_tweet_id = "25283831"
     data_max_position = ""
     settings = get_project_settings()
@@ -55,20 +55,7 @@ class SearchSpider(scrapy.Spider):
                         advanced search: https://twitter.com/search-advanced
         """
         self.query = query
-        query_token = query.split(',')
-        self.query_keyword = query_token[0]
-        self.query_lang = query_token[1]
-        self.query_since = query_token[2]
-        self.query_until = query_token[3]
-        # if self.query_keyword is "st. john's wort":
-        #     self.custom_settings= {'MONGODB_COLLECTION': 'st_johns_wort'}     
-        # elif self.query_keyword is "echinacea":
-        #     self.custom_settings= {'MONGODB_COLLECTION': 'echinacea'}
-        # elif self.query_keyword is "valerian":
-        #     self.custom_settings= {'MONGODB_COLLECTION': 'valerian'}
-        # elif self.query_keyword is "melatonin":
-        #     self.custom_settings= {'MONGODB_COLLECTION': 'melatonin'}
-        
+        self.query_keyword = query.split(',')[0]
         # Tracer()()
 
         self.session_id = session_id.strftime('%Y-%m-%d')
@@ -77,55 +64,23 @@ class SearchSpider(scrapy.Spider):
         # Tracer()()
         self.start_urls.append(url)
 
-        # self.set_crawler(self.crawler)
-
-    # def set_crawler(self, crawler):
-    #     super(SearchSpider, self).set_crawler(crawler)
-    #     if self.query_keyword is "st. john's wort":
-    #         crawler.settings.set('MONGODB_COLLECTION','st_johns_wort')
-    #     elif self.query_keyword is "echinacea":
-    #         crawler.settings.set('MONGODB_COLLECTION','echinacea')
-    #     elif self.query_keyword is "valerian":
-    #         crawler.settings.set('MONGODB_COLLECTION','valerian')
-    #     elif self.query_keyword is "melatonin":
-    #         crawler.settings.set('MONGODB_COLLECTION','melatonin')
-    #     else:
-    #         crawler.settings.set('MONGODB_COLLECTION','tweet_detail_test')
-
     def parse(self, response):
         # Random string is used to construct the XHR sent to twitter.com
         random_str = "BD1UO2FFu9QAAAAAAAAETAAAAAcAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         data = json.loads(response.body_as_unicode())
-        #default rate delay is 12s
-        # rate_delay = self.settings['DOWNLOAD_DELAY']
-        # rate_delay = 2
-
-        # delay_choices = [(1,30), (2,25), (3,20),(4,15),(5,10)]
-        # delay_choices = [(1,50), (2,30), (3,10),(4,8),(5,2)] 
-        # delay_choices = [(0,1),(1,89), (2,4), (3,3),(4,2),(5,1)]
-        # delay_choices = [(1,60), (2,20), (3,10),(4,8),(5,2)]
-        # delay_choices = [(0,33),(1,56), (2,5), (3,3),(4,2),(5,1)]
-        # if data["max_position"] is not None:
             
         try:
             if data['items_html'] is not None:
                 tweets = self.extract_tweets(data['items_html'])
 
+                
                 # If we have no tweets, then we can break the loop early
                 if len(tweets) == 0 and data['has_more_items'] is False:
                     # Tracer()()
-                    if self.isEnd():
-                        pprint(data)
-                        logging.log(logging.DEBUG, data)
-                        logging.log(logging.INFO, "Reach the end of search results( " + self.query + " )")
-                        return
-                    else:
-                        time.sleep(10)
-                        Tracer()()
-                        self.query_until = self.query_until.split(':')[0] + self.max_tweet['created_at_iso'].strftime('%Y-%m-%d')
-                        self.query = ','.join(self.query_keyword,self.query_lang,self.query_since,self.query_until)
-                        new_url = self.construct_url(self.query)
-                        yield Request(url=new_url, callback=self.parse,dont_filter=True)
+                    pprint(data)
+                    logging.log(logging.DEBUG, data)
+                    logging.log(logging.INFO, "Reach the end of search results( " + self.query + " )")
+                    return
                     # yield Request(url=next_url, callback=self.parse)
 
                 for tweet in tweets:
@@ -148,35 +103,12 @@ class SearchSpider(scrapy.Spider):
                         self.max_tweet['tweet_id'],
                         self.min_tweet['tweet_id'],
                         random_str)
-                    # '''
-                    #     is_first_query is a indicator used to identify the intial query. With the intial query 
-                    #     the crwaler can simulate the hand-shake request while the delay time is greater than a 
-                    #     predefined time period, for instance, 22 seconds
-                    # '''
-                    # if self.is_first_query:
-                    #     self.data_max_position = self.max_position
-                    #     self.is_first_query = False
-                    # Construct next url to crawl
+
                     next_url = self.construct_url(
                         self.query,
                         max_position=self.max_position,
                         operater="max_position")
 
-                    # Sleep for rate_delay
-                    # Tracer()()
-                    # delay_multiple = self.weighted_choice(delay_choices)
-                    # if delay_multiple is not 0:
-                    #     delay_time = random.uniform(rate_delay*(delay_multiple-1), rate_delay*delay_multiple)
-                    #     logging.log(logging.DEBUG,"Sleep for "+ str(delay_time) +" seconds")
-                    #     time.sleep(delay_time)
-                    #     # if delay_time > 22:
-                    #     #     next_url = self.construct_url(
-                    #     #         self.query,
-                    #     #         max_position=self.data_max_position,
-                    #     #         operater="min_position")
-                    #     #     yield Request(url=next_url, callback=self.parse,dont_filter=True)
-                    # else:
-                    #     logging.log(logging.DEBUG,"Sleep for 0 seconds")
 
                     print
                     print "Next Request:" + "TWEET-%s-%s" % (
@@ -186,12 +118,6 @@ class SearchSpider(scrapy.Spider):
                     yield Request(url=next_url, callback=self.parse,dont_filter=True)
         except Exception, e:
             pass
-
-    def isEnd(self):
-        if self.max_tweet['tweet_id'] is self.very_last_tweet_id:
-            return True
-        else:
-            return False
 
     def weighted_choice(self, choices):
         """
@@ -299,54 +225,9 @@ class SearchSpider(scrapy.Spider):
                 try:
                     text_p = li.find("p", class_="tweet-text")
                     if text_p is not None:
-                        # Replace each emoji with its unicode value
-                        # textElement.find('img.twitter-emoji').each((i, emoji) ->
-                        #   $(emoji).html $(emoji).attr('alt')
-                        # )
-                        # Tacer()()
-                        # pint
-                        # [rint(text_p)
-                        # emoji_dict = [
-                        #     emoji for emoji in text_p.find_all(
-                        #         "img", class_="twitter-emoji"
-                        #     )
-                        # ]
-                        # def replace_all(text, dic):
-                        #   for i, j in dic.iteritems():
-                        #       text = text.replace(i, j)
-                        #       return text
-                        # len(emoji_dict) is not 0:
-                        # for emoji in emoji_dict:
-                        #     Tracer()()
-                            # text_p = text_p.replace(
-                            #     str(emoji), emoji['alt'].decode('ascii')
-                            #     )
-                        tweet['text'] = text_p.get_text()               
-
-                        # If there is any user mention containing the query, then pass the tweet.
-                        # Tracer()()
-                        # if self.query.find("from:") == -1:
-                        user_mentions = twitter_username_re.match(tweet['text'])
-                        if user_mentions and any([self.query_keyword.lower() in user_mention.lower() for user_mention in user_mentions.groups()]):
-                            # Tracer()()
-                            logging.log(logging.DEBUG, 'Found '+self.query_keyword+' in '+ str(user_mentions.groups())+': Drop tweet '+tweet['tweet_id'])
-                            continue
-                        # If the keyword was found in the text and was the same with query, then accept the tweet 
-                        # elif text_p.find("strong") and text_p.find("strong").get_text().lower() == self.query_keyword.lower():
-                        #     tweet['keyword'] = text_p.find("strong").get_text()
-                        # elif tweet['text'].lower().find(self.query_keyword.lower()) != -1:
-                        #     tweet['keyword'] = self.query_keyword
-                        # else:
-                        #     # The keyword is not in the text, then pass the tweet.
-                        #     # Tracer()()
-                        #     logging.log(logging.DEBUG, 'No '+self.query_keyword +' in the content of tweet'+': Drop tweet '+tweet['tweet_id'])
-                        #     continue                   
-                    else:
-                        # Tracer()()
-                        logging.log(logging.DEBUG, 'No content in the tweet'+': Drop tweet '+tweet['tweet_id'])
-                        continue
+                        tweet['text'] = text_p.get_text()                
                 except Exception, e:
-                    # Tracer()()
+                    Tracer()()
                     logging.log(logging.DEBUG, "ERROR(extract_text_p): %s"%(str(e),))
                     traceback.print_exc()
                 '''
@@ -433,55 +314,46 @@ class SearchSpider(scrapy.Spider):
         pagination of tweets
         :return: A string URL
         """
-        sequent_q = ' '.join(query.split(','))
-        # Tracer()()
-        params = {
-            'vertical': 'default',
-            # Query Param
-            # 'q': query+ ' '+'lang:en'+' '+'since:2007-01-19 until:2014-03-13', #st.john's wort since:2007-01-20 until:2014-03-12 
-            'q': sequent_q,
-            # Type Param
-            'src': 'typd',
-            'f':'tweets'
-        }
+        try:
+            sequent_q = ' '.join(query.split(','))
+            # Tracer()()
+            params = {
+                'vertical': 'default',
+                # Query Param
+                # 'q': query+ ' '+'lang:en'+' '+'since:2007-01-19 until:2014-03-13', #st.john's wort since:2007-01-20 until:2014-03-12 
+                'q': sequent_q,
+                # Type Param
+                'src': 'typd',
+                'f':'tweets'
+            }
 
-        #todo develop a query operator recognize function
-        # def doit(text):
-        #     import re
-        #     matches=re.findall(r'\"(.+?)\"',text)
-        #     # matches is now ['String 1', 'String 2', 'String3']
-        #     return ",".join(matches)
+            # If our max_position param is not None, we add it to the parameters
+            if operater == "max_position":
+                if max_position is not None:
+                    params['include_available_features'] = '1'
+                    params['include_entities'] = '1'
+                    params['max_position'] = max_position
+                    params['reset_error_state'] = 'false'
+                    params['last_note_ts'] = int(time.time())
 
-        # q = doit(query) 
+            elif operater == "min_position":
+                if max_position is not None:
+                    params['composed_count'] = '0'
+                    params['include_available_features'] = '1'
+                    params['include_entities'] = '1'
+                    params['include_new_items_bar'] = 'true'
+                    params['interval'] = '30000'
+                    params['latent_count'] = '0'
+                    params['min_position'] = max_position
+                    params['last_note_ts'] = int(time.time())
+            # url_tupple = ('https', 'twitter.com', '/i/search/timeline',
+            #               '', urlencode(OrderedDict(params)), '')
+            url_tupple = ['https', 'twitter.com', '/i/search/timeline',
+                          '', urlencode(OrderedDict(params)), '']
+            # Tracer()()
+            # url_tupple = ('https', 'twitter.com', 'i/profiles/show/'+user_screen_name+'/timeline/with_replies', '', urlencode(params), '')
+            return urlunparse(url_tupple)
+        except Exception:
+            traceback.print_exc()
+            pass
 
-        # params = {
-        #     'vertical': 'default',            
-        #     # Type Param
-        #     'src': 'typd'
-        # }
-
-        # If our max_position param is not None, we add it to the parameters
-        if operater == "max_position":
-            if max_position is not None:
-                params['include_available_features'] = '1'
-                params['include_entities'] = '1'
-                params['max_position'] = max_position
-                params['reset_error_state'] = 'false'
-
-        elif operater == "min_position":
-            if max_position is not None:
-                params['composed_count'] = '0'
-                params['include_available_features'] = '1'
-                params['include_entities'] = '1'
-                params['include_new_items_bar'] = 'true'
-                params['interval'] = '30000'
-                params['latent_count'] = '0'
-                params['min_position'] = max_position
-        # url_tupple = ('https', 'twitter.com', '/i/search/timeline',
-        #               '', urlencode(OrderedDict(params)), '')
-        url_tupple = ['https', 'twitter.com', '/i/search/timeline',
-                      '', urlencode(OrderedDict(params)), '']
-        # Tracer()()
-        # url_tupple = ('https', 'twitter.com', 'i/profiles/show/'+user_screen_name+'/timeline/with_replies', '', urlencode(params), '')
-        return urlunparse(url_tupple)
-        # print urlunparse(url_tupple)
