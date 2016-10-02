@@ -67,7 +67,7 @@ ITEM_PIPELINES = {
    'scrapy_mongodb.MongoDBPipeline':300,
    # 'twitterscraper.pipelines.MongoDBPipeline_test': 300,
    'twitterscraper.pipelines.DuplicatesPipeline': 250,
-   # 
+   #
    'twitterscraper.pipelines.FilterNoContentPipeline': 150,
    'twitterscraper.pipelines.FilterUserMentionPipeline': 200,
 }
@@ -140,7 +140,7 @@ PROXY_CHANGING_ODDS = 33
 USER_AGENT_LIST = "_user_agent_list.txt"
 USER_AGENT_CHANGING_ODDS = 60
 
-LOG_FILE = "logs/scrapy.log"
+LOG_FILE = "../logs/scrapy.log"
 LOG_ENABLED = False
 
 # scrapy-webdriver settings

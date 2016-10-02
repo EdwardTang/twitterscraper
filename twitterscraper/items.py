@@ -35,3 +35,11 @@ class TwitterscraperItem(scrapy.Item):
     quote_tweet_screenname = Field()
     quote_tweet_text = Field()
     html = Field()
+
+class FirstTweetItem(scrapy.Item):
+    user_id = Field()
+    user_screen_name = Field()
+    last_tweet_id = Field()
+    referring_url = Field()
+    create_at_ts = Field()
+    created_at_iso = Field()

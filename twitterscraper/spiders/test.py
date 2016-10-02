@@ -33,12 +33,12 @@ from IPython.core.debugger import Tracer
 class SearchSpider(scrapy.Spider):
     name = "test"
     allowed_domains = ["twitter.com"]
-    custom_settings = {'MONGODB_COLLECTION': 'melatonin'}
+    custom_settings = {'MONGODB_COLLECTION': 'nurse_tweets'}
                         # 'LOG_FILE':'logs/echinacea/scrapy.log'
     start_urls = []
     settings = get_project_settings()
 
-    def __init__(self, domain=None, query="from:TangTotoro"):
+    def __init__(self, domain=None, query="from:TangTotoro", last_id="0"):
         # super(SearchSpider, self).__init__(*args, **kwargs)
         # query = kwargs.get('query')
         session_id = datetime.datetime.utcnow().date()
@@ -54,7 +54,7 @@ class SearchSpider(scrapy.Spider):
         self.query_keyword = query.split(',')[0]
         self.min_tweet = {}
         self.max_tweet = {}
-        self.very_last_tweet_id = "213426697909977088"  # melatonin' last tweet
+        self.very_last_tweet_id = last_id  # melatonin' last tweet
         # self.very_last_tweet_id = "25283831" #valerian's last tweet
         # self.very_last_tweet_id = '291475022'  # st johns wort 2014-04-14
         self.until_boundary = self.query['until']

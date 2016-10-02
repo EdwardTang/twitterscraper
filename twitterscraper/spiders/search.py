@@ -43,7 +43,7 @@ class SearchSpider(scrapy.Spider):
         # super(SearchSpider, self).__init__(*args, **kwargs)
         # query = kwargs.get('query')
         session_id = datetime.datetime.utcnow().date()
-        
+
         """
         Scrape items from twitter
         :param query:   Query to search Twitter with. Takes form of queries
@@ -68,17 +68,17 @@ class SearchSpider(scrapy.Spider):
         # rate_delay = 2
 
         # delay_choices = [(1,30), (2,25), (3,20),(4,15),(5,10)]
-        # delay_choices = [(1,50), (2,30), (3,10),(4,8),(5,2)] 
+        # delay_choices = [(1,50), (2,30), (3,10),(4,8),(5,2)]
         # delay_choices = [(0,1),(1,89), (2,4), (3,3),(4,2),(5,1)]
         # delay_choices = [(1,60), (2,20), (3,10),(4,8),(5,2)]
         # delay_choices = [(0,33),(1,56), (2,5), (3,3),(4,2),(5,1)]
         # if data["max_position"] is not None:
-            
+
         try:
             if data['items_html'] is not None:
                 tweets = self.extract_tweets(data['items_html'])
 
-                
+
                 # If we have no tweets, then we can break the loop early
                 if len(tweets) == 0 and data['has_more_items'] is False:
                     Tracer()()
@@ -91,7 +91,7 @@ class SearchSpider(scrapy.Spider):
                 for tweet in tweets:
                     # push parsed item to mongoDB pipline
                     yield self.parse_tweet(tweet, response)
-                    
+
                 # If we haven't set our min tweet yet, set it now
                 if self.min_tweet is None:
                     self.is_first_query = True
@@ -109,8 +109,8 @@ class SearchSpider(scrapy.Spider):
                         self.min_tweet['tweet_id'],
                         random_str)
                     # '''
-                    #     is_first_query is a indicator used to identify the intial query. With the intial query 
-                    #     the crwaler can simulate the hand-shake request while the delay time is greater than a 
+                    #     is_first_query is a indicator used to identify the intial query. With the intial query
+                    #     the crwaler can simulate the hand-shake request while the delay time is greater than a
                     #     predefined time period, for instance, 22 seconds
                     # '''
                     # if self.is_first_query:
@@ -275,7 +275,7 @@ class SearchSpider(scrapy.Spider):
                             # text_p = text_p.replace(
                             #     str(emoji), emoji['alt'].decode('ascii')
                             #     )
-                        tweet['text'] = text_p.get_text()               
+                        tweet['text'] = text_p.get_text()
 
                         # If there is any user mention containing the query, then pass the tweet.
                         # Tracer()()
@@ -285,7 +285,7 @@ class SearchSpider(scrapy.Spider):
                             # Tracer()()
                             logging.log(logging.DEBUG, 'Found '+self.query_keyword+' in '+ str(user_mentions.groups())+': Drop tweet '+tweet['tweet_id'])
                             continue
-                        # If the keyword was found in the text and was the same with query, then accept the tweet 
+                        # If the keyword was found in the text and was the same with query, then accept the tweet
                         # elif text_p.find("strong") and text_p.find("strong").get_text().lower() == self.query_keyword.lower():
                         #     tweet['keyword'] = text_p.find("strong").get_text()
                         # elif tweet['text'].lower().find(self.query_keyword.lower()) != -1:
@@ -294,7 +294,7 @@ class SearchSpider(scrapy.Spider):
                         #     # The keyword is not in the text, then pass the tweet.
                         #     # Tracer()()
                         #     logging.log(logging.DEBUG, 'No '+self.query_keyword +' in the content of tweet'+': Drop tweet '+tweet['tweet_id'])
-                        #     continue                   
+                        #     continue
                     else:
                         # Tracer()()
                         logging.log(logging.DEBUG, 'No content in the tweet'+': Drop tweet '+tweet['tweet_id'])
@@ -342,7 +342,7 @@ class SearchSpider(scrapy.Spider):
                             tweet['created_at_iso'] = datetime.datetime.fromtimestamp(tweet["created_at_ts"]).isoformat(' ')
                         except Exception, e:
                             Tracer()()
-                            logging.log(logging.DEBUG, "ERROR(extract _timestamp): %s"%(str(e),)) 
+                            logging.log(logging.DEBUG, "ERROR(extract _timestamp): %s"%(str(e),))
                             traceback.print_exc()
 
                     # Tweet Retweets
@@ -365,11 +365,11 @@ class SearchSpider(scrapy.Spider):
 
                 # self.parse_tweet(tweet)
                 # Tracer()()#break point
-                
+
                 print
                 print tweet['tweet_id']+': '+tweet['created_at_iso']+' '+'['+tweet['user_name']+']'+' '+tweet['text']
                 print
-                
+
 
                 tweets.append(tweet)
             return tweets
@@ -392,7 +392,7 @@ class SearchSpider(scrapy.Spider):
         params = {
             'vertical': 'default',
             # Query Param
-            # 'q': query+ ' '+'lang:en'+' '+'since:2007-01-19 until:2014-03-13', #st.john's wort since:2007-01-20 until:2014-03-12 
+            # 'q': query+ ' '+'lang:en'+' '+'since:2007-01-19 until:2014-03-13', #st.john's wort since:2007-01-20 until:2014-03-12
             'q': sequent_q,
             # Type Param
             'src': 'typd',
@@ -406,10 +406,10 @@ class SearchSpider(scrapy.Spider):
         #     # matches is now ['String 1', 'String 2', 'String3']
         #     return ",".join(matches)
 
-        # q = doit(query) 
+        # q = doit(query)
 
         # params = {
-        #     'vertical': 'default',            
+        #     'vertical': 'default',
         #     # Type Param
         #     'src': 'typd'
         # }
